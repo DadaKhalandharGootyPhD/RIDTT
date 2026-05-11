@@ -29,7 +29,7 @@ Tree-based communication topologies are widely used in distributed machine learn
 
 This work proposes a preliminary communication topology based on two complementary spanning trees constructed over the same logical node set. The proposed design attempts to reduce persistent node criticality by assigning complementary hierarchical roles across the two trees. Nodes that are highly critical in one tree are intentionally placed in lower-criticality positions in the second tree.
 
-Unlike conventional redundant tree approaches, this work additionally introduces explicit inter-tree identity connections between corresponding node instances across the two trees. This layered dual-tree structure enables alternate routing paths while preserving hierarchical communication efficiency.
+Unlike conventional redundant tree approaches, the proposed topology constructs two structurally distinct overlay trees over the same physical node set. This creates alternate routing structures while preserving hierarchical communication efficiency.
 
 This document presents the preliminary formulation, intuition, structural definitions, and initial theoretical direction of the proposed topology.
 
@@ -64,7 +64,7 @@ This creates a significant reliability issue for large-scale distributed systems
 
 This work proposes a preliminary dual-tree topology intended to reduce such failure sensitivity.
 
-\section{Layered Dual-Tree Topology}
+\section{Dual-Tree Overlay Topology}
 
 Let:
 
@@ -74,52 +74,36 @@ V = \{v_1,v_2,\dots,v_n\}
 
 be the logical node set.
 
-Two tree layers are constructed:
+Two tree overlays are constructed over the same node set:
 
 \[
-T_1 = (V_1,E_1)
+T_1 = (V,E_1)
 \]
 
+and
+
 \[
-T_2 = (V_2,E_2)
+T_2 = (V,E_2)
 \]
 
 where:
+\begin{itemize}
+    \item \(T_1\) and \(T_2\) are complete binary trees,
+    \item both trees span the same physical nodes,
+    \item the edge structures differ in order to diversify dependency relationships.
+\end{itemize}
+
+The combined communication graph is defined as:
 
 \[
-V_1 = \{v_1^{(1)},v_2^{(1)},\dots,v_n^{(1)}\}
+G=(V,E_1\cup E_2)
 \]
 
-\[
-V_2 = \{v_1^{(2)},v_2^{(2)},\dots,v_n^{(2)}\}
-\]
+Thus each physical node simultaneously participates in both communication trees.
 
-represent node instances in Tree 1 and Tree 2 respectively.
+Unlike layered or duplicated graph formulations, nodes are not replicated across trees. The two trees instead represent independent communication overlays constructed over the same distributed system.
 
-\subsection{Inter-Tree Identity Connections}
-
-For every logical node \(v_i\), an explicit inter-tree connection is introduced between its two layer instances:
-
-\[
-E_c =
-\{
-(v_i^{(1)},v_i^{(2)})
-\mid
-1 \le i \le n
-\}
-\]
-
-These edges represent identity-preserving transitions between the two trees.
-
-The complete communication graph is therefore:
-
-\[
-G =
-(V_1 \cup V_2,
-E_1 \cup E_2 \cup E_c)
-\]
-
-This formulation converts the topology into a layered redundant communication graph rather than a conventional single-tree hierarchy.
+The primary objective is to reduce persistent articulation structures by ensuring that nodes occupying highly critical positions in one tree occupy lower-criticality positions in the other.
 
 \section{Core Design Principle}
 
@@ -138,7 +122,7 @@ Informally:
 
 This attempts to avoid persistent bottleneck nodes across the combined communication structure.
 
-\subsection{Initial Role-Inversion Intuition}
+\subsection{Role Inversion Intuition}
 
 An initial motivating intuition is:
 
@@ -153,11 +137,20 @@ I(T_1) \approx L(T_2)
 where:
 
 \begin{itemize}
-    \item \(L(T)\) denotes leaf nodes,
-    \item \(I(T)\) denotes internal nodes.
+    \item \(L(T)\) denotes the set of leaf nodes,
+    \item \(I(T)\) denotes the set of internal nodes.
 \end{itemize}
 
-Exact inversion may not always be feasible under strict binary tree constraints. Therefore, approximate inversion or criticality inversion becomes the practical design objective.
+The intention is that nodes which are structurally vulnerable in one tree become structurally important in the other tree, and vice versa.
+
+Under idealized constructions:
+\begin{itemize}
+    \item internal nodes in one tree contribute degree \(3\),
+    \item leaf participation in the second tree contributes degree \(1\),
+    \item producing approximate combined degree \(4\) for most nodes.
+\end{itemize}
+
+This creates a sparse but significantly more resilient communication structure compared to a conventional single binary tree.
 
 \section{Node Criticality}
 
@@ -206,79 +199,101 @@ The intention is that local failures in one tree become non-local in the second 
 
 \section{Fault-Tolerance Intuition}
 
-Consider failure of an internal node in \(T_1\).
+A single binary tree has vertex connectivity:
 
-In a conventional tree:
+\[
+\kappa(T)=1
+\]
 
-\begin{itemize}
-    \item all descendants become disconnected.
-\end{itemize}
+because every internal node acts as an articulation point.
 
-In the proposed dual-tree structure:
+Failure of an internal node disconnects all dependent descendants.
 
-\begin{itemize}
-    \item descendants may transition through inter-tree identity edges,
-    \item reroute through alternate dependency structures in \(T_2\),
-    \item and potentially reconnect through unaffected regions of the communication graph.
-\end{itemize}
+The proposed topology attempts to reduce this fragility by combining two structurally distinct binary trees over the same node set.
 
-Thus the combined layered graph may remain connected even after single-node failures.
+Suppose a node failure disconnects portions of \(T_1\).
+
+If dependency relationships in \(T_2\) differ sufficiently, disconnected descendants in \(T_1\) may still remain connected through alternate paths in \(T_2\).
+
+Thus the combined graph:
+
+\[
+G=(V,E_1\cup E_2)
+\]
+
+may remain connected even after failures that would disconnect a conventional tree.
+
+The topology therefore attempts to eliminate persistent articulation points through dependency diversification across the two tree structures.
 
 \section{Failure Model}
 
-A logical node failure is assumed to remove both layer instances of the node:
+A physical node failure removes the node from both communication trees simultaneously.
+
+Formally, removal of node:
 
 \[
-v_i^{(1)}
+v_i \in V
 \]
 
-and
+removes:
+\begin{itemize}
+    \item all incident edges in \(T_1\),
+    \item all incident edges in \(T_2\).
+\end{itemize}
 
-\[
-v_i^{(2)}
-\]
-
-simultaneously.
-
-Thus failures represent physical node failures rather than isolated layer failures.
-
-The topology attempts to maintain communication despite such coupled failures by ensuring dependency diversity across the two trees.
+The resilience objective is therefore not simple redundancy, but rather structural diversification of dependency relationships across the two trees.
 
 \section{Preliminary Theoretical Direction}
 
-A central research question is whether the combined graph:
+The central theoretical question is the vertex connectivity of the combined graph:
 
 \[
-G =
-(V_1 \cup V_2,
-E_1 \cup E_2 \cup E_c)
+G=(V,E_1\cup E_2)
 \]
 
-can satisfy:
+where:
+\begin{itemize}
+    \item \(T_1\) and \(T_2\) are complete binary trees,
+    \item both trees span the same node set,
+    \item dependency overlap between the trees is minimized.
+\end{itemize}
+
+A single binary tree satisfies:
+
+\[
+\kappa(T)=1
+\]
+
+due to articulation points.
+
+However, the proposed topology may achieve:
 
 \[
 \kappa(G)\ge2
 \]
 
-where:
+or potentially larger connectivity under sufficiently diverse tree constructions.
 
+An important observation is that:
 \begin{itemize}
-    \item \(\kappa(G)\) denotes graph vertex connectivity.
+    \item internal nodes in one tree contribute degree \(3\),
+    \item leaf participation in the second tree contributes degree \(1\),
+    \item giving many nodes approximate total degree \(4\).
 \end{itemize}
 
-If true, the topology would remain connected after removal of any single logical node.
+This suggests the possibility of significantly stronger connectivity than conventional trees while still preserving sparse communication complexity.
 
 A preliminary conjecture is:
 
 \begin{quote}
-If the two trees maintain sufficiently distinct dependency structures and anti-correlated node criticality, then the combined graph may achieve improved fault tolerance compared to conventional tree topologies.
+If articulation structures and dependency relationships are sufficiently diversified across the two trees, then the combined graph may eliminate persistent articulation points and achieve substantially improved fault tolerance compared to a single tree.
 \end{quote}
 
-Formal proof and exact construction conditions remain open problems.
+Formal proof and optimal construction methods remain open problems.
 
 \section{Illustrative Example}
 
-Figure~\ref{fig:dual_tree} illustrates the conceptual layered dual-tree structure.
+Figure~\ref{fig:dual_tree} illustrates the conceptual dual-tree overlay structure.
 
 \begin{figure}[H]
 
@@ -326,7 +341,7 @@ Figure~\ref{fig:dual_tree} illustrates the conceptual layered dual-tree structur
 
 \node at (8,4.7) {\textbf{Tree $T_2$}};
 
-% ---------------- INTER TREE CONNECTIONS ----------------
+% ---------------- CORRESPONDENCE LINES ----------------
 
 \draw[dashed] (A0)--(B0);
 \draw[dashed] (A1)--(B1);
@@ -339,8 +354,9 @@ Figure~\ref{fig:dual_tree} illustrates the conceptual layered dual-tree structur
 \end{tikzpicture}
 
 \caption{
-Conceptual layered dual-tree topology with explicit inter-tree identity connections.
-Dashed lines represent inter-tree transitions between corresponding node instances.
+Conceptual dual-tree overlay topology.
+Both trees are constructed over the same physical node set.
+Dashed lines indicate correspondence of node identities across the two overlay structures for visualization purposes only.
 }
 
 \label{fig:dual_tree}
@@ -370,14 +386,16 @@ Several important problems remain open:
     \item communication latency analysis,
     \item dynamic rerouting algorithms,
     \item comparison with ring and fat-tree topologies,
-    \item resilience under multiple simultaneous failures.
+    \item resilience under multiple simultaneous failures,
+    \item min-cut and vertex-connectivity characterization,
+    \item articulation overlap minimization.
 \end{itemize}
 
 \section{Conclusion}
 
-This work introduced a preliminary layered dual-tree communication topology intended to improve fault tolerance in hierarchical distributed systems.
+This work introduced a preliminary dual-tree communication topology intended to improve fault tolerance in hierarchical distributed systems.
 
-The key idea is the construction of complementary spanning trees with anti-correlated node criticality and explicit inter-tree identity connections, reducing persistent bottlenecks and improving alternate communication path availability.
+The key idea is the construction of complementary overlay tree structures with anti-correlated node criticality, reducing persistent bottlenecks and improving alternate communication path availability.
 
 The proposed topology remains an early-stage research direction. Future work includes formal graph-theoretic analysis, construction algorithms, simulations, and distributed machine learning evaluation.
 
